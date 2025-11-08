@@ -69,35 +69,56 @@ def get_template_dirs(config: Dict[str, Any]) -> List[Path]:
     1. Project template directories
     2. Framework additional template directories
     3. Framework default template directories
+
+    Supports new format: "type=path1:path2" where type is reports/findings
     """
     dirs = []
     raptor_root = get_raptor_root()
 
+    # Helper to parse additional_dirs entries
+    def parse_template_entry(entry: str, base_path: Path) -> List[tuple]:
+        """Parse entry like 'reports=~/path1:~/path2' into (type, Path) tuples."""
+        results = []
+        if '=' in entry:
+            # New format: "type=path1:path2"
+            template_type, paths_str = entry.split('=', 1)
+            template_type = template_type.strip()
+            for path_str in paths_str.split(':'):
+                path_str = path_str.strip()
+                if path_str:
+                    path = Path(path_str).expanduser()
+                    if not path.is_absolute():
+                        path = base_path / path
+                    if path.exists():
+                        results.append((template_type, path))
+        else:
+            # Legacy format: just a path (applies to all types)
+            path = Path(entry).expanduser()
+            if not path.is_absolute():
+                path = base_path / path
+            if path.exists():
+                # Add for all template types (reports, findings)
+                for template_type in ['reports', 'findings']:
+                    results.append((template_type, path))
+        return results
+
     # Get project-specific template directories
     if 'templates' in config and 'additional_dirs' in config['templates']:
-        for dir_path in config['templates']['additional_dirs']:
-            path = Path(dir_path).expanduser()
-            if not path.is_absolute():
-                # Relative to project root
-                path = Path.cwd() / path
-            if path.exists():
+        for entry in config['templates']['additional_dirs']:
+            for template_type, path in parse_template_entry(entry, Path.cwd()):
                 dirs.append(path)
 
     # Get framework additional template directories
     # Load framework config separately to get framework-specific settings
     framework_config = load_toml(raptor_root / "raptor.toml")
     if 'templates' in framework_config and 'additional_dirs' in framework_config['templates']:
-        for dir_path in framework_config['templates']['additional_dirs']:
-            path = Path(dir_path).expanduser()
-            if not path.is_absolute():
-                # Relative to raptor installation
-                path = raptor_root / path
-            if path.exists():
+        for entry in framework_config['templates']['additional_dirs']:
+            for template_type, path in parse_template_entry(entry, raptor_root):
                 dirs.append(path)
 
     # Get framework default directories
     if 'templates' in framework_config:
-        for key in ['reports', 'schemas', 'findings']:
+        for key in ['reports', 'findings']:
             if key in framework_config['templates']:
                 path = raptor_root / framework_config['templates'][key]
                 if path.exists():
@@ -114,30 +135,49 @@ def get_script_dirs(config: Dict[str, Any]) -> List[Path]:
     1. Project script directories
     2. Framework additional script directories
     3. Framework default script directory
+
+    Supports new format: "type=path1:path2" where type identifies script category
     """
     dirs = []
     raptor_root = get_raptor_root()
 
+    # Helper to parse additional_dirs entries
+    def parse_script_entry(entry: str, base_path: Path) -> List[tuple]:
+        """Parse entry like 'analysis=~/path1:~/path2' into (type, Path) tuples."""
+        results = []
+        if '=' in entry:
+            # New format: "type=path1:path2"
+            script_type, paths_str = entry.split('=', 1)
+            script_type = script_type.strip()
+            for path_str in paths_str.split(':'):
+                path_str = path_str.strip()
+                if path_str:
+                    path = Path(path_str).expanduser()
+                    if not path.is_absolute():
+                        path = base_path / path
+                    if path.exists():
+                        results.append((script_type, path))
+        else:
+            # Legacy format: just a path (no specific type)
+            path = Path(entry).expanduser()
+            if not path.is_absolute():
+                path = base_path / path
+            if path.exists():
+                results.append(('general', path))
+        return results
+
     # Get project-specific script directories
     if 'scripts' in config and 'additional_dirs' in config['scripts']:
-        for dir_path in config['scripts']['additional_dirs']:
-            path = Path(dir_path).expanduser()
-            if not path.is_absolute():
-                # Relative to project root
-                path = Path.cwd() / path
-            if path.exists():
+        for entry in config['scripts']['additional_dirs']:
+            for script_type, path in parse_script_entry(entry, Path.cwd()):
                 dirs.append(path)
 
     # Get framework additional script directories
     # Load framework config separately to get framework-specific settings
     framework_config = load_toml(raptor_root / "raptor.toml")
     if 'scripts' in framework_config and 'additional_dirs' in framework_config['scripts']:
-        for dir_path in framework_config['scripts']['additional_dirs']:
-            path = Path(dir_path).expanduser()
-            if not path.is_absolute():
-                # Relative to raptor installation
-                path = raptor_root / path
-            if path.exists():
+        for entry in framework_config['scripts']['additional_dirs']:
+            for script_type, path in parse_script_entry(entry, raptor_root):
                 dirs.append(path)
 
     # Get framework default directory

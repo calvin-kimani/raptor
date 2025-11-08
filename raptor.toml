@@ -7,16 +7,16 @@ installation_path = "/home/user/.raptor"  # Will be set during installation
 
 [templates]
 # Default template directories (relative to raptor installation)
-schemas = "templates/schemas"
 reports = "templates/reports"
 findings = "templates/findings"
 
 # Additional custom template directories
-# Add your own directories here for custom report formats or finding templates
+# Format: "type=path1:path2:path3" where type is reports/findings
+# Multiple paths can be separated by colons (:)
 # Can be absolute paths or relative to raptor installation
 additional_dirs = [
-    # "~/my-custom-templates",
-    # "/path/to/shared/templates"
+    # "reports=~/custom-reports",
+    # "findings=~/my-findings:~/team-findings"
 ]
 
 [scripts]
@@ -24,11 +24,13 @@ additional_dirs = [
 default_dir = "scripts"
 
 # Additional custom script directories
-# Add your own directories here for custom audit tools and utilities
+# Format: "type=path1:path2:path3" where type identifies the script category
+# Multiple paths can be separated by colons (:)
 # Can be absolute paths or relative to raptor installation
 additional_dirs = [
-    # "~/my-audit-scripts",
-    # "/path/to/team/scripts"
+    # "analysis=~/my-analysis-scripts",
+    # "reporting=~/custom-reports",
+    # "utilities=~/audit-utils:~/team-utils"
 ]
 
 [defaults]
