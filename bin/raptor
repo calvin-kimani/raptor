@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+"""
+Raptor CLI Launcher
+"""
+
+import sys
+from pathlib import Path
+
+# Add bin directory to path
+bin_dir = Path(__file__).parent.resolve()
+sys.path.insert(0, str(bin_dir))
+
+# Run raptor CLI
+from cli.raptor import main
+
+if __name__ == '__main__':
+    sys.exit(main())
