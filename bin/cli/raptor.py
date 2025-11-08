@@ -10,7 +10,7 @@ from .finding import new_finding
 from .report import generate_report
 from . import git as git_module
 from . import update as update_module
-from . import plugins
+from . import plugin_manager as plugins
 
 
 def main():

@@ -1,127 +1,158 @@
 """
 Plugin/Tool discovery and management system.
 
-Fetches plugins from remote git repositories and manages their installation and CLI integration.
+Downloads install.py files from remote URLs and lets them handle plugin installation.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, Optional, Any
 import importlib.util
 import sys
-import subprocess
-import shutil
+import urllib.request
+
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    try:
+        import tomli as tomllib  # Fallback for older Python
+    except ImportError:
+        import toml as tomllib  # Fallback to toml package
 
 
-def load_plugins_registry() -> Dict[str, Tuple[str, str, str]]:
+def load_plugins_registry() -> Dict[str, str]:
     """
-    Load plugin registry from plugins.txt.
+    Load plugin registry from raptor.toml.
 
     Returns:
-        Dict mapping plugin name to (git_url, branch, install_path) tuple
+        Dict mapping plugin name to install.py URL
     """
-    plugins_file = Path(__file__).parent / "plugins.txt"
+    # Find raptor.toml (in project root or raptor installation)
+    toml_paths = [
+        Path.cwd() / "raptor.toml",  # Current project
+        Path(__file__).parent.parent.parent / "raptor.toml",  # Raptor installation
+        Path.home() / ".raptor" / "raptor.toml",  # User config
+    ]
+
+    config_file = None
+    for toml_path in toml_paths:
+        if toml_path.exists():
+            config_file = toml_path
+            break
+
+    if not config_file:
+        return {}
+
+    # Read TOML file
+    try:
+        with open(config_file, 'rb' if hasattr(tomllib, 'load') else 'r') as f:
+            if hasattr(tomllib, 'load'):
+                config = tomllib.load(f)
+            else:
+                config = tomllib.load(f)
+    except Exception as e:
+        print(f"Warning: Could not read raptor.toml: {e}")
+        return {}
+
+    # Extract plugins section
     plugins = {}
-
-    if not plugins_file.exists():
-        return plugins
-
-    with open(plugins_file, 'r') as f:
-        for line in f:
-            line = line.strip()
-            # Skip comments and empty lines
-            if not line or line.startswith('#'):
-                continue
-
-            # Parse plugin:git_url:branch:install_path format
-            parts = line.split(':', 3)
-            if len(parts) == 4:
-                name, git_url, branch, install_path = parts
-                plugins[name.strip()] = (git_url.strip(), branch.strip(), install_path.strip())
+    if 'plugins' in config:
+        for plugin_name, plugin_config in config['plugins'].items():
+            if isinstance(plugin_config, dict):
+                url = plugin_config.get('url', '')
+                if url:
+                    plugins[plugin_name] = url
 
     return plugins
 
 
-def _fetch_plugin(plugin_name: str, git_url: str, branch: str, install_path: str) -> Optional[Path]:
+def _fetch_install_py(plugin_name: str, url: str) -> Optional[Path]:
     """
-    Fetch a plugin from a remote git repository.
+    Download install.py from a URL.
 
     Args:
         plugin_name: Name of the plugin
-        git_url: Git repository URL
-        branch: Branch to fetch from
-        install_path: Path to install.py within the repo
+        url: Direct URL to the install.py file
 
     Returns:
-        Path to the plugin directory, or None if fetch failed
+        Path to the downloaded install.py, or None if download failed
     """
     plugins_dir = Path(__file__).parent / "plugins"
     plugin_dir = plugins_dir / plugin_name
+    install_file = plugin_dir / "install.py"
 
-    # If already fetched, return existing path
-    if plugin_dir.exists():
-        return plugin_dir
+    # If already downloaded, return existing path
+    if install_file.exists():
+        return install_file
 
-    # Create plugins directory if needed
-    plugins_dir.mkdir(exist_ok=True)
+    # Create plugin directory
+    plugin_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        print(f"Fetching plugin '{plugin_name}' from {git_url} (branch: {branch})...")
+        print(f"Downloading plugin '{plugin_name}' from {url}...")
 
-        # Clone the repository with sparse checkout
-        subprocess.run(
-            ["git", "clone", "--depth", "1", "--branch", branch, "--filter=blob:none", "--sparse", git_url, str(plugin_dir)],
-            check=True,
-            capture_output=True,
-            text=True
-        )
+        # Download the install.py file
+        with urllib.request.urlopen(url) as response:
+            install_content = response.read()
 
-        # Set up sparse checkout for only the plugin directory
-        plugin_base_path = Path(install_path).parent
-        subprocess.run(
-            ["git", "-C", str(plugin_dir), "sparse-checkout", "set", str(plugin_base_path)],
-            check=True,
-            capture_output=True,
-            text=True
-        )
+        # Save to file
+        with open(install_file, 'wb') as f:
+            f.write(install_content)
 
-        print(f"✓ Plugin '{plugin_name}' fetched successfully")
-        return plugin_dir
+        print(f"✓ Plugin '{plugin_name}' downloaded successfully")
+        return install_file
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error fetching plugin '{plugin_name}': {e.stderr if e.stderr else str(e)}")
-        # Clean up failed clone
-        if plugin_dir.exists():
-            shutil.rmtree(plugin_dir)
-        return None
     except Exception as e:
-        print(f"Unexpected error fetching plugin '{plugin_name}': {e}")
-        if plugin_dir.exists():
-            shutil.rmtree(plugin_dir)
+        print(f"Error downloading plugin '{plugin_name}': {e}")
+        # Clean up failed download
+        if install_file.exists():
+            install_file.unlink()
+        if plugin_dir.exists() and not any(plugin_dir.iterdir()):
+            plugin_dir.rmdir()
         return None
 
 
 def discover_tools() -> Dict[str, Any]:
     """
-    Discover all available tools from plugins.txt.
+    Discover all available tools from raptor.toml and local plugins.
 
     Returns:
         Dict mapping tool name to tool module
     """
     tools = {}
+
+    # First, check for local plugins (for development)
+    plugins_dir = Path(__file__).parent / "plugins"
+    if plugins_dir.exists():
+        for plugin_path in plugins_dir.iterdir():
+            if plugin_path.is_dir() and not plugin_path.name.startswith('_'):
+                install_file = plugin_path / "install.py"
+                if install_file.exists():
+                    plugin_name = plugin_path.name
+                    module_name = f"cli.plugins.{plugin_name}.install"
+
+                    try:
+                        spec = importlib.util.spec_from_file_location(module_name, install_file)
+                        if spec and spec.loader:
+                            module = importlib.util.module_from_spec(spec)
+                            sys.modules[module_name] = module
+                            spec.loader.exec_module(module)
+
+                            if hasattr(module, 'TOOL_INFO'):
+                                tools[module.TOOL_INFO['name']] = module
+                    except Exception as e:
+                        print(f"Warning: Could not load local plugin '{plugin_name}': {e}")
+
+    # Then, check for remote plugins in raptor.toml
     registry = load_plugins_registry()
-
-    for plugin_name, (git_url, branch, install_path) in registry.items():
-        # Fetch plugin if needed (but don't install dependencies)
-        plugin_dir = _fetch_plugin(plugin_name, git_url, branch, install_path)
-
-        if not plugin_dir:
+    for plugin_name, url in registry.items():
+        # Skip if already loaded locally
+        if any(mod.TOOL_INFO.get('name') == plugin_name for mod in tools.values()):
             continue
 
-        # Resolve the install.py path
-        install_file = plugin_dir / install_path
+        # Download install.py
+        install_file = _fetch_install_py(plugin_name, url)
 
-        if not install_file.exists():
-            print(f"Warning: Plugin '{plugin_name}' install file not found: {install_path}")
+        if not install_file:
             continue
 
         # Import the install module
@@ -131,11 +162,9 @@ def discover_tools() -> Dict[str, Any]:
             spec = importlib.util.spec_from_file_location(module_name, install_file)
             if spec and spec.loader:
                 module = importlib.util.module_from_spec(spec)
-                # Add to sys.modules so relative imports work
                 sys.modules[module_name] = module
                 spec.loader.exec_module(module)
 
-                # Get tool info
                 if hasattr(module, 'TOOL_INFO'):
                     tools[module.TOOL_INFO['name']] = module
                 else:

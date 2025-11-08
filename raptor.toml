@@ -38,3 +38,11 @@ additional_dirs = [
 test_framework = "foundry"  # foundry, hardhat, or custom
 severity_levels = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
 report_formats = ["sherlock", "code4rena", "codehawks"]
+
+# Plugin Registry
+# Add plugins by defining them in this section
+# The URL should point directly to the install.py file (e.g., raw GitHub URL)
+# Example format:
+# [plugins.plugin_name]
+# url = "https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/path/to/install.py"
+# description = "Plugin description"
