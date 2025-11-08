@@ -23,16 +23,16 @@ Raptor uses two `raptor.toml` configuration files:
 Edit `~/.raptor/raptor.toml`:
 
 ```toml
-[templates]
-# Default template directories (don't modify these)
-schemas = "templates/schemas"
-reports = "templates/reports"
-findings = "templates/findings"
+[schemas]
+# Default schema directories (don't modify these)
+findings = "schemas/findings"
+reports = "schemas/reports"
 
 # Add your custom directories here
+# Format: "type=path1:path2:path3" where type is findings/reports
 additional_dirs = [
-    "~/my-custom-templates",
-    "/path/to/team/shared/templates"
+    "reports=~/my-custom-reports",
+    "findings=~/my-custom-findings"
 ]
 ```
 
@@ -41,11 +41,12 @@ additional_dirs = [
 Edit your project's `raptor.toml`:
 
 ```toml
-[templates]
-# Project-specific custom template directories
+[schemas]
+# Project-specific custom schema directories
+# Format: "type=path1:path2:path3" where type is findings/reports
 additional_dirs = [
-    "./custom-templates",
-    "../shared-templates"
+    "reports=./custom-templates",
+    "findings=../shared-findings"
 ]
 ```
 
@@ -129,8 +130,8 @@ Let's say you want to add a custom report format for "MyPlatform":
 
 3. Register the directory in `~/.raptor/raptor.toml`:
    ```toml
-   [templates]
-   additional_dirs = ["~/my-templates"]
+   [schemas]
+   additional_dirs = ["reports=~/my-templates/reports"]
    ```
 
 4. Now you can use it:
@@ -182,8 +183,11 @@ For team collaboration:
 
 2. Each team member adds to their `~/.raptor/raptor.toml`:
    ```toml
-   [templates]
-   additional_dirs = ["~/team-templates"]
+   [schemas]
+   additional_dirs = [
+       "reports=~/team-templates/reports",
+       "findings=~/team-templates/findings"
+   ]
    ```
 
 3. Update templates:
@@ -203,8 +207,8 @@ For one-off custom templates in a specific audit:
 2. Add template file
 3. Update project's `raptor.toml`:
    ```toml
-   [templates]
-   additional_dirs = ["./custom-templates"]
+   [schemas]
+   additional_dirs = ["reports=./custom-templates/reports"]
    ```
 
 4. These templates are only available in this project

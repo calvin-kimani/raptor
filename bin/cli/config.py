@@ -61,14 +61,14 @@ def load_config() -> Dict[str, Any]:
     return config
 
 
-def get_template_dirs(config: Dict[str, Any]) -> List[Path]:
+def get_schema_dirs(config: Dict[str, Any]) -> List[Path]:
     """
-    Get all template directories from configuration.
+    Get all schema directories from configuration.
 
-    Returns list of paths to search for templates, in order:
-    1. Project template directories
-    2. Framework additional template directories
-    3. Framework default template directories
+    Returns list of paths to search for schemas (findings/reports), in order:
+    1. Project schema directories
+    2. Framework additional schema directories
+    3. Framework default schema directories
 
     Supports new format: "type=path1:path2" where type is reports/findings
     """
@@ -76,13 +76,13 @@ def get_template_dirs(config: Dict[str, Any]) -> List[Path]:
     raptor_root = get_raptor_root()
 
     # Helper to parse additional_dirs entries
-    def parse_template_entry(entry: str, base_path: Path) -> List[tuple]:
+    def parse_schema_entry(entry: str, base_path: Path) -> List[tuple]:
         """Parse entry like 'reports=~/path1:~/path2' into (type, Path) tuples."""
         results = []
         if '=' in entry:
             # New format: "type=path1:path2"
-            template_type, paths_str = entry.split('=', 1)
-            template_type = template_type.strip()
+            schema_type, paths_str = entry.split('=', 1)
+            schema_type = schema_type.strip()
             for path_str in paths_str.split(':'):
                 path_str = path_str.strip()
                 if path_str:
@@ -90,37 +90,37 @@ def get_template_dirs(config: Dict[str, Any]) -> List[Path]:
                     if not path.is_absolute():
                         path = base_path / path
                     if path.exists():
-                        results.append((template_type, path))
+                        results.append((schema_type, path))
         else:
             # Legacy format: just a path (applies to all types)
             path = Path(entry).expanduser()
             if not path.is_absolute():
                 path = base_path / path
             if path.exists():
-                # Add for all template types (reports, findings)
-                for template_type in ['reports', 'findings']:
-                    results.append((template_type, path))
+                # Add for all schema types (reports, findings)
+                for schema_type in ['reports', 'findings']:
+                    results.append((schema_type, path))
         return results
 
-    # Get project-specific template directories
-    if 'templates' in config and 'additional_dirs' in config['templates']:
-        for entry in config['templates']['additional_dirs']:
-            for template_type, path in parse_template_entry(entry, Path.cwd()):
+    # Get project-specific schema directories
+    if 'schemas' in config and 'additional_dirs' in config['schemas']:
+        for entry in config['schemas']['additional_dirs']:
+            for schema_type, path in parse_schema_entry(entry, Path.cwd()):
                 dirs.append(path)
 
-    # Get framework additional template directories
+    # Get framework additional schema directories
     # Load framework config separately to get framework-specific settings
     framework_config = load_toml(raptor_root / "raptor.toml")
-    if 'templates' in framework_config and 'additional_dirs' in framework_config['templates']:
-        for entry in framework_config['templates']['additional_dirs']:
-            for template_type, path in parse_template_entry(entry, raptor_root):
+    if 'schemas' in framework_config and 'additional_dirs' in framework_config['schemas']:
+        for entry in framework_config['schemas']['additional_dirs']:
+            for schema_type, path in parse_schema_entry(entry, raptor_root):
                 dirs.append(path)
 
     # Get framework default directories
-    if 'templates' in framework_config:
+    if 'schemas' in framework_config:
         for key in ['reports', 'findings']:
-            if key in framework_config['templates']:
-                path = raptor_root / framework_config['templates'][key]
+            if key in framework_config['schemas']:
+                path = raptor_root / framework_config['schemas'][key]
                 if path.exists():
                     dirs.append(path)
 
@@ -191,19 +191,19 @@ def get_script_dirs(config: Dict[str, Any]) -> List[Path]:
 
 def find_template(template_name: str, template_type: str = "reports") -> Path:
     """
-    Find a template file by searching all configured template directories.
+    Find a template file by searching all configured schema directories.
 
     Args:
         template_name: Name of template file (e.g., "sherlock-report.yml")
-        template_type: Type of template ("reports", "schemas", "findings")
+        template_type: Type of template ("reports", "findings")
 
     Returns:
         Path to template file, or None if not found
     """
     config = load_config()
-    template_dirs = get_template_dirs(config)
+    schema_dirs = get_schema_dirs(config)
 
-    for dir_path in template_dirs:
+    for dir_path in schema_dirs:
         # Check if this directory contains the template type as a subdirectory
         if (dir_path / template_type).exists():
             template_path = dir_path / template_type / template_name

@@ -5,18 +5,18 @@
 version = "0.1.0"
 installation_path = "/home/user/.raptor"  # Will be set during installation
 
-[templates]
-# Default template directories (relative to raptor installation)
-reports = "templates/reports"
-findings = "templates/findings"
+[schemas]
+# Default schema directories (relative to raptor installation)
+findings = "schemas/findings"
+reports = "schemas/reports"
 
-# Additional custom template directories
-# Format: "type=path1:path2:path3" where type is reports/findings
+# Additional custom schema directories
+# Format: "type=path1:path2:path3" where type is findings/reports
 # Multiple paths can be separated by colons (:)
 # Can be absolute paths or relative to raptor installation
 additional_dirs = [
-    # "reports=~/custom-reports",
-    # "findings=~/my-findings:~/team-findings"
+    # "findings=~/custom-finding-schemas",
+    # "reports=~/custom-report-schemas:~/team-report-schemas"
 ]
 
 [scripts]

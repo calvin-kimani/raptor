@@ -1,3 +1,6 @@
+template_name: codehawks-report
+template_version: "1.0.0"
+platform: CodeHawks
 name: CodeHawks Finding
 description: CodeHawks audit finding template
 labels: []

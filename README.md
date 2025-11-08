@@ -107,12 +107,12 @@ raptor/
 │       ├── raptor.py     # Main CLI logic
 │       └── update.py     # Version management
 ├── scripts/              # Custom user scripts directory
-├── templates/            # Report and finding templates
+├── schemas/              # Report templates and finding schemas
 │   ├── reports/
 │   │   ├── sherlock-report.yml   # Sherlock format template
 │   │   ├── code4rena-report.yml  # Code4rena format template
 │   │   └── codehawks-report.yml  # CodeHawks format template
-│   └── schemas/
+│   └── findings/
 │       └── finding-schema.json   # JSON schema for findings
 ├── CONFIGURATION.md      # Configuration guide
 ├── CONTRIBUTING.md       # Contribution guidelines
@@ -132,7 +132,7 @@ Raptor supports generating reports for multiple audit platforms:
 Each platform has specific formatting requirements. Raptor stores findings in a structured JSON format and transforms them into the appropriate markdown format for each platform.
 
 **Template locations:**
-- Framework templates: `~/.raptor/templates/reports/`
+- Framework templates: `~/.raptor/schemas/reports/`
 - Project templates: `<project>/audits/reports/.templates/`
 - Custom templates: Configurable via `raptor.toml`
 
@@ -209,75 +209,11 @@ raptor report --format sherlock --finding HIGH-reentrancy-attack
 
 ## Configuration
 
-### Custom Templates and Scripts
-
-Raptor supports custom templates and scripts through the `raptor.toml` configuration file.
-
-**Framework-level customization** (`~/.raptor/raptor.toml`):
-```toml
-[templates]
-additional_dirs = [
-    "~/my-custom-templates",  # Your custom report formats
-]
-
-[scripts]
-additional_dirs = [
-    "~/my-audit-scripts",     # Your custom tools
-]
-```
-
-**Project-level customization** (in your audit project's `raptor.toml`):
-```toml
-[templates]
-additional_dirs = [
-    "./custom-templates",      # Project-specific templates
-]
-
-[scripts]
-additional_dirs = [
-    "./scripts",               # Project-specific scripts
-]
-```
-
-**Search order:**
-1. Project-specific directories
-2. Framework additional directories
-3. Framework default directories
-
-This allows you to:
-- Create custom report formats for different platforms
-- Share templates across your team
-- Build project-specific automation tools
-- Maintain personal audit utilities
-
 See [CONFIGURATION.md](CONFIGURATION.md) for detailed configuration guide.
 
 ## Contributing
 
-We welcome contributions from the community! Whether you're fixing bugs, adding features, improving documentation, or suggesting new audit methodologies, your help is appreciated.
-
-### Quick Start
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature-name`
-3. Make your changes
-4. Submit a pull request
-
-For detailed contribution guidelines, including:
-- Setting up your development environment
-- Branch naming conventions
-- Commit message format
-- Code review process
-- Troubleshooting common issues
-
 Please read our [Contributing Guide](CONTRIBUTING.md).
-
-### Areas for Contribution
-
-- **Bug fixes and improvements**: Help make Raptor more stable and reliable
-- **New report format templates**: Add support for additional audit platforms
-- **Documentation enhancements**: Improve guides, tutorials, and API docs
-- **CLI feature additions**: Extend Raptor's functionality
 
 ### Code of Conduct
 
@@ -292,11 +228,9 @@ Please be respectful and professional in all interactions. We're all here to lea
 
 ## License
 
-Licensed under either of [Apache License](./LICENSE-APACHE), Version
-2.0 or [MIT License](./LICENSE-MIT) at your option.
+Licensed under either of [Apache License](./LICENSE-APACHE), Version 2.0 or [MIT License](./LICENSE-MIT) at your option.
 
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in these crates by you, as defined in the Apache-2.0 license,
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in these crates by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
 
 ## Disclaimer

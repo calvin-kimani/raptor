@@ -1,3 +1,6 @@
+template_name: code4rena-report
+template_version: "1.0.0"
+platform: Code4rena
 name: Code4rena Finding
 description: Code4rena audit finding template
 labels: []

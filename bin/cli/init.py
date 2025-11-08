@@ -168,12 +168,12 @@ broadcast/
     raptor_root = get_raptor_root()
 
     # Copy finding schema to findings/.templates
-    schema_src = raptor_root / "templates/schemas/finding-schema.json"
+    schema_src = raptor_root / "schemas/findings/finding-schema.json"
     if schema_src.exists():
         shutil.copy(schema_src, project_path / "audits/findings/.templates/finding-schema.json")
 
     # Copy report templates to reports/.templates
-    templates_dir = raptor_root / "templates/reports"
+    templates_dir = raptor_root / "schemas/reports"
     for template in ["sherlock-report.yml", "code4rena-report.yml", "codehawks-report.yml"]:
         template_src = templates_dir / template
         if template_src.exists():

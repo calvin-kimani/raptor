@@ -1,3 +1,6 @@
+template_name: sherlock-report
+template_version: "1.0.0"
+platform: Sherlock
 name: Audit Item
 description: Current version of the audit items that end up in the report
 labels: []

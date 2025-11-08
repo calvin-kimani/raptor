@@ -1,7 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "name": "raptor-finding-default",
+  "version": "1.0.0",
   "title": "Raptor Finding Schema",
-  "description": "Schema for security findings in Raptor audit framework",
+  "description": "Default schema for security findings in Raptor audit framework",
   "type": "object",
   "required": [
     "title",
