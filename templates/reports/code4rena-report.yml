@@ -1,0 +1,98 @@
+name: Code4rena Finding
+description: Code4rena audit finding template
+labels: []
+projects: []
+title: "{vulnerability name}"
+body:
+  - type: textarea
+    id: lines-of-code
+    attributes:
+      label: Lines of code
+      description: "Links to affected code lines (e.g., https://github.com/code-423n4/project/blob/main/Contract.sol#L123-L456)"
+      placeholder: |
+        https://github.com/code-423n4/project/blob/main/Contract.sol#L123
+        https://github.com/code-423n4/project/blob/main/Contract.sol#L456
+    validations:
+      required: true
+  - type: textarea
+    id: vulnerability-details
+    attributes:
+      label: Vulnerability details
+      description: |
+        Detailed description of the vulnerability including:
+        - **Root Cause**: The fundamental issue in the code
+        - **Pre-conditions**: What conditions must be met
+        - **Attack Path**: Step-by-step exploitation
+      placeholder: |
+        The vulnerability exists in the `transfer()` function at line 123...
+
+        **Root Cause**: The contract does not validate...
+
+        **Pre-conditions**:
+        1. User must have staked tokens
+        2. Contract balance must be above threshold
+
+        **Attack Path**:
+        1. Attacker calls `stake()`
+        2. Attacker immediately calls `withdraw()`
+        3. Due to missing check, attacker drains the pool
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: |
+        Quantified impact and affected parties.
+
+        Format: **The {affected party} suffers [loss description]. [The attacker gains {gain}].**
+      placeholder: |
+        The stakers suffer a complete loss of their staked funds. The attacker gains all stolen funds from the staking pool.
+    validations:
+      required: true
+  - type: textarea
+    id: poc
+    attributes:
+      label: Proof of Concept
+      description: |
+        A coded PoC demonstrating the vulnerability
+      placeholder: |
+        ```solidity
+        // SPDX-License-Identifier: MIT
+        pragma solidity ^0.8.0;
+
+        import "forge-std/Test.sol";
+        import "../src/VulnerableContract.sol";
+
+        contract ExploitTest is Test {
+            function testExploit() public {
+                // PoC code here
+            }
+        }
+        ```
+    validations:
+      required: false
+  - type: textarea
+    id: tools-used
+    attributes:
+      label: Tools Used
+      description: "Tools and methodologies used to discover this vulnerability"
+      placeholder: |
+        Manual Review, Raptor Framework
+    validations:
+      required: false
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Recommended Mitigation Steps
+      description: |
+        Specific, actionable steps to fix the vulnerability
+      placeholder: |
+        Add a validation check in the `transfer()` function:
+
+        ```solidity
+        require(balance >= amount, "Insufficient balance");
+        require(recipient != address(0), "Invalid recipient");
+        ```
+    validations:
+      required: false

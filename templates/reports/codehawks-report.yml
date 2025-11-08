@@ -1,0 +1,120 @@
+name: CodeHawks Finding
+description: CodeHawks audit finding template
+labels: []
+projects: []
+title: "{vulnerability name}"
+body:
+  - type: textarea
+    id: severity
+    attributes:
+      label: Severity
+      description: "Severity classification"
+      placeholder: "High"
+    validations:
+      required: true
+  - type: textarea
+    id: relevant-links
+    attributes:
+      label: Relevant GitHub Links
+      description: "Links to affected code"
+      placeholder: |
+        https://github.com/project/contract/blob/main/src/Contract.sol#L123
+    validations:
+      required: false
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: |
+        Brief summary of the vulnerability
+
+        Format: **{root cause} will cause {impact} for {affected party} as {actor} will {attack path}**
+      placeholder: |
+        Missing validation in the withdrawal function allows an attacker to drain all staked funds
+    validations:
+      required: true
+  - type: textarea
+    id: vulnerability-details
+    attributes:
+      label: Vulnerability Details
+      description: |
+        Detailed technical explanation including:
+        - Root cause analysis
+        - Pre-conditions required
+        - Step-by-step attack path
+      placeholder: |
+        The vulnerability exists in the `withdraw()` function due to a missing balance check.
+
+        **Root Cause**:
+        In `StakingContract.sol:234` there is no validation that the requested withdrawal amount is less than or equal to the user's staked balance.
+
+        **Internal Pre-conditions**:
+        1. Contract must have at least 100 ETH staked
+        2. Attacker must have staked at least 0.01 ETH
+
+        **Attack Path**:
+        1. Attacker stakes 0.01 ETH
+        2. Attacker calls withdraw() with amount = 100 ETH
+        3. Due to missing check, withdrawal succeeds
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: |
+        Detailed impact analysis with quantification
+      placeholder: |
+        The protocol suffers a complete loss of all staked funds. The attacker gains all funds from the staking pool (estimated 100+ ETH).
+
+        This represents a critical loss for all legitimate stakers who will be unable to withdraw their funds.
+    validations:
+      required: true
+  - type: textarea
+    id: tools-used
+    attributes:
+      label: Tools Used
+      description: "Tools and methodologies used"
+      placeholder: |
+        Manual Review, Foundry, Raptor Framework
+    validations:
+      required: false
+  - type: textarea
+    id: recommendations
+    attributes:
+      label: Recommendations
+      description: |
+        Specific mitigation steps
+      placeholder: |
+        Add proper balance validation:
+
+        ```solidity
+        function withdraw(uint256 amount) external {
+            require(balances[msg.sender] >= amount, "Insufficient balance");
+            balances[msg.sender] -= amount;
+            payable(msg.sender).transfer(amount);
+        }
+        ```
+    validations:
+      required: false
+  - type: textarea
+    id: poc
+    attributes:
+      label: Proof of Concept
+      description: |
+        Runnable proof of concept code
+      placeholder: |
+        ```solidity
+        // SPDX-License-Identifier: MIT
+        pragma solidity ^0.8.0;
+
+        import "forge-std/Test.sol";
+
+        contract ExploitPoC is Test {
+            function testDrainFunds() public {
+                // PoC demonstrating the exploit
+            }
+        }
+        ```
+    validations:
+      required: false

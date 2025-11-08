@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Raptor Finding Schema",
+  "description": "Schema for security findings in Raptor audit framework",
+  "type": "object",
+  "required": [
+    "title",
+    "severity",
+    "summary",
+    "root_cause",
+    "internal_preconditions",
+    "external_preconditions",
+    "attack_path",
+    "impact"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Finding title in format: {actor} will {impact} {affected party}",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ],
+      "description": "Severity level of the finding"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Summary with structure: {root cause} will cause [a/an] {impact} for {affected party} as {actor} will {attack path}",
+      "minLength": 1
+    },
+    "root_cause": {
+      "type": "string",
+      "description": "The fundamental issue - either code location or design flaw",
+      "minLength": 1
+    },
+    "internal_preconditions": {
+      "type": "array",
+      "description": "System state requirements for the vulnerability to be exploitable",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "external_preconditions": {
+      "type": "array",
+      "description": "External protocol conditions needed for exploitation",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 0
+    },
+    "attack_path": {
+      "type": "array",
+      "description": "Step-by-step exploitation sequence",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "impact": {
+      "type": "string",
+      "description": "Quantified losses and affected parties",
+      "minLength": 1
+    },
+    "poc": {
+      "type": "string",
+      "description": "Proof of concept code (optional)"
+    },
+    "mitigation": {
+      "type": "string",
+      "description": "Recommended fixes to address the vulnerability"
+    }
+  }
+}
