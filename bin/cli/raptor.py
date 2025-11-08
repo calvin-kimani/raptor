@@ -10,6 +10,7 @@ from .finding import new_finding
 from .report import generate_report
 from . import git as git_module
 from . import update as update_module
+from . import plugins
 
 
 def main():
@@ -20,33 +21,59 @@ def main():
         epilog="""
 Examples:
   raptor init my-audit                   Initialize new audit project
+
   raptor init my-audit --force           Force overwrite existing directory
+
   raptor init --git-url https://github.com/user/repo.git
                                          Clone repo to src/ (shallow clone by default)
+  
   raptor init --git-url URL1 URL2 --commit
                                          Clone multiple repos with full commit history
+  
   raptor git add https://github.com/user/repo.git
                                          Add repository to existing project (shallow)
+  
   raptor git add URL1 URL2 --commit      Add multiple repos with full history
+
   raptor git remove repo-name            Remove repository from src/
+
   raptor git update                      Update all repositories
+
   raptor git update repo1 repo2          Update specific repositories
+
   raptor git list                        List all repositories
+
   raptor finding --new "Attacker will drain funds" --severity HIGH
                                          Create a new finding
   raptor finding --new "Reentrancy" --severity CRITICAL --report sherlock code4rena
                                          Create finding and generate reports
+  
   raptor report --format sherlock code4rena
                                          Generate reports for all findings
+  
   raptor report --format codehawks --finding HIGH-reentrancy-attack
                                          Generate report for specific finding
+  
   raptor update                          Update to latest stable version
+  
   raptor update v0.2.5                   Update to specific version
+  
   raptor upgrade                         Upgrade to latest major version
+  
   raptor upgrade v1.0.0                  Upgrade to specific major version
+  
   raptor downgrade v0.1.0                Downgrade to previous version
+  
   raptor version --list                  List all available versions
+  
   raptor version --current               Show current version
+  
+  raptor install --list                  List all available plugins
+  
+  raptor install plugin-name             Install a plugin
+  
+  raptor install --status plugin-name             Show installation status for a plugin
+  
   raptor --version                       Show version
 """
     )
@@ -125,6 +152,17 @@ Examples:
     version_group.add_argument('--current', '-c', action='store_true',
                               help='Show current version')
 
+    # Install command
+    install_parser = subparsers.add_parser('install', help='Install plugins and tools')
+    install_parser.add_argument('tool', nargs='?', help='Tool to install (e.g., ai)')
+    install_parser.add_argument('--list', '-l', action='store_true',
+                               help='List all available tools')
+    install_parser.add_argument('--status', '-s', metavar='TOOL',
+                               help='Show installation status for a tool')
+
+    # Register plugin commands
+    plugin_handlers = plugins.register_tool_commands(subparsers)
+
     args = parser.parse_args()
 
     if not args.command:
@@ -175,6 +213,26 @@ Examples:
             current = update_module.get_current_version()
             print(f"Raptor version: {current}")
             return 0
+    elif args.command == 'install':
+        if args.list:
+            plugins.list_tools()
+            return 0
+        elif args.status:
+            plugins.show_status(args.status)
+            return 0
+        elif args.tool:
+            return 0 if plugins.install_tool(args.tool) else 1
+        else:
+            install_parser.print_help()
+            return 0
+    elif args.command in plugin_handlers:
+        # Handle plugin commands
+        handler = plugin_handlers[args.command]
+        if callable(handler):
+            return handler(args)
+        else:
+            print(f"Error: Invalid handler for command '{args.command}'")
+            return 1
     else:
         parser.print_help()
         return 1

@@ -2,3 +2,4 @@ methodologies
 .claude
 CLAUDE.md
 bin/cli/__pycache__
+bin/cli/plugins/
