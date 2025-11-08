@@ -1,0 +1,38 @@
+# Raptor Framework Configuration
+# This is the default configuration for the Raptor installation
+
+[raptor]
+version = "0.1.0"
+installation_path = "/home/user/.raptor"  # Will be set during installation
+
+[templates]
+# Default template directories (relative to raptor installation)
+schemas = "templates/schemas"
+reports = "templates/reports"
+findings = "templates/findings"
+
+# Additional custom template directories
+# Add your own directories here for custom report formats or finding templates
+# Can be absolute paths or relative to raptor installation
+additional_dirs = [
+    # "~/my-custom-templates",
+    # "/path/to/shared/templates"
+]
+
+[scripts]
+# Default scripts directory (relative to raptor installation)
+default_dir = "scripts"
+
+# Additional custom script directories
+# Add your own directories here for custom audit tools and utilities
+# Can be absolute paths or relative to raptor installation
+additional_dirs = [
+    # "~/my-audit-scripts",
+    # "/path/to/team/scripts"
+]
+
+[defaults]
+# Default settings for new projects
+test_framework = "foundry"  # foundry, hardhat, or custom
+severity_levels = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+report_formats = ["sherlock", "code4rena", "codehawks"]
