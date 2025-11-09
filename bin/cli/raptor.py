@@ -154,11 +154,13 @@ Examples:
 
     # Install command
     install_parser = subparsers.add_parser('install', help='Install plugins and tools')
-    install_parser.add_argument('tool', nargs='?', help='Tool to install (e.g., ai)')
+    install_parser.add_argument('tool', nargs='?', help='Tool to install (e.g., solidity-parser)')
     install_parser.add_argument('--list', '-l', action='store_true',
                                help='List all available tools')
     install_parser.add_argument('--status', '-s', metavar='TOOL',
                                help='Show installation status for a tool')
+    install_parser.add_argument('--global', '-g', dest='global_install', action='store_true',
+                               help='Install globally to raptor installation instead of project plugins')
 
     # Register plugin commands
     plugin_handlers = plugins.register_tool_commands(subparsers)
@@ -221,7 +223,8 @@ Examples:
             plugins.show_status(args.status)
             return 0
         elif args.tool:
-            return 0 if plugins.install_tool(args.tool) else 1
+            global_install = getattr(args, 'global_install', False)
+            return 0 if plugins.install_tool(args.tool, global_install) else 1
         else:
             install_parser.print_help()
             return 0
