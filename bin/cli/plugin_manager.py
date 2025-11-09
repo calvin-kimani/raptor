@@ -9,6 +9,7 @@ from typing import Dict, Optional, Any, List
 import importlib.util
 import sys
 import urllib.request
+import json
 
 try:
     import tomllib  # Python 3.11+
@@ -492,6 +493,31 @@ def install_tool(
             elif not installed_by:  # Only print for explicit installs
                 version_suffix = f" (v{dep_required_version})" if dep_required_version else ""
                 print(f"  ✓ Installed dependency '{dep_name}'{version_suffix}")
+
+        # Step 6.5: Create dependency paths config file for this plugin
+        dep_paths = {}
+        for dep_spec in dependencies:
+            dep_name, _, _, _ = parse_dependency_spec(dep_spec)
+            # Get the installed dependency version and path
+            dep_version = _lock.get_active_version(dep_name)
+            if dep_version:
+                dep_plugin_info = _lock.get_plugin(dep_name, dep_version)
+                if dep_plugin_info:
+                    dep_location = dep_plugin_info.get('location', 'project')
+
+                    if dep_location == 'global':
+                        dep_base = Path(__file__).parent / "plugins" / dep_name
+                    else:
+                        dep_base = Path.cwd() / ".plugins" / dep_name
+
+                    dep_path = dep_base / dep_version
+                    dep_paths[dep_name] = str(dep_path)
+
+        # Write dependency paths to plugin directory
+        if dep_paths:
+            deps_config_file = install_dir / ".plugin_deps.json"
+            with open(deps_config_file, 'w') as f:
+                json.dump(dep_paths, f, indent=2)
 
         # Step 7: Run the install function
         if hasattr(module, 'install'):
