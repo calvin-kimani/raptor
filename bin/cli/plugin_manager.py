@@ -366,6 +366,50 @@ def install_tool(tool_name: str, global_install: bool = False) -> bool:
         return False
 
 
+def install_all_tools(global_install: bool = False) -> bool:
+    """
+    Install all tools defined in raptor.toml.
+
+    Args:
+        global_install: If True, install to global plugins; if False, install to project plugins
+
+    Returns:
+        True if all installations succeeded
+    """
+    registry = load_plugins_registry()
+
+    if not registry:
+        print("No plugins defined in raptor.toml")
+        print("\nAdd plugins to raptor.toml:")
+        print("[plugins.plugin-name]")
+        print('url = "https://... or /path/to/plugin"')
+        print('description = "Plugin description"')
+        return False
+
+    print(f"Installing {len(registry)} plugin(s) from raptor.toml...\n")
+
+    success_count = 0
+    failed = []
+
+    for tool_name in registry.keys():
+        print(f"Installing '{tool_name}'...")
+        if install_tool(tool_name, global_install):
+            success_count += 1
+        else:
+            failed.append(tool_name)
+        print()  # Blank line between installations
+
+    # Summary
+    print(f"\n{'='*60}")
+    print(f"Installation Summary:")
+    print(f"  ✓ Successful: {success_count}/{len(registry)}")
+    if failed:
+        print(f"  ✗ Failed: {', '.join(failed)}")
+    print(f"{'='*60}")
+
+    return len(failed) == 0
+
+
 def check_tool(tool_name: str) -> bool:
     """
     Check if a tool is installed.

@@ -65,15 +65,23 @@ Examples:
   raptor downgrade v0.1.0                Downgrade to previous version
   
   raptor version --list                  List all available versions
-  
+
   raptor version --current               Show current version
-  
-  raptor install --list                  List all available plugins
-  
-  raptor install plugin-name             Install a plugin
-  
-  raptor install --status plugin-name             Show installation status for a plugin
-  
+
+  raptor plugins --list                  List all available plugins
+  raptor plugins -l                      (shorthand)
+
+  raptor plugins install                 Install all plugins from raptor.toml
+  raptor plugins -i                      (shorthand)
+
+  raptor plugins install plugin1 plugin2 Install specific plugins
+  raptor plugins -i plugin1 plugin2      (shorthand)
+
+  raptor plugins install --global        Install all plugins globally
+  raptor plugins -i -g                   (shorthand)
+
+  raptor plugins status plugin-name      Show installation status for a plugin
+
   raptor --version                       Show version
 """
     )
@@ -152,15 +160,30 @@ Examples:
     version_group.add_argument('--current', '-c', action='store_true',
                               help='Show current version')
 
-    # Install command
-    install_parser = subparsers.add_parser('install', help='Install plugins and tools')
-    install_parser.add_argument('tool', nargs='?', help='Tool to install (e.g., solidity-parser)')
-    install_parser.add_argument('--list', '-l', action='store_true',
-                               help='List all available tools')
-    install_parser.add_argument('--status', '-s', metavar='TOOL',
-                               help='Show installation status for a tool')
-    install_parser.add_argument('--global', '-g', dest='global_install', action='store_true',
-                               help='Install globally to raptor installation instead of project plugins')
+    # Plugins command
+    plugins_parser = subparsers.add_parser('plugins', help='Manage plugins')
+    plugins_subparsers = plugins_parser.add_subparsers(dest='plugins_command', help='Plugin operations')
+
+    # Plugins list
+    plugins_list = plugins_subparsers.add_parser('list', help='List all available plugins')
+
+    # Plugins install
+    plugins_install = plugins_subparsers.add_parser('install', help='Install plugins')
+    plugins_install.add_argument('plugins', nargs='*', help='Plugin name(s) to install (default: install all from raptor.toml)')
+    plugins_install.add_argument('--global', '-g', dest='global_install', action='store_true',
+                                help='Install globally to raptor installation instead of project plugins')
+
+    # Plugins status
+    plugins_status = plugins_subparsers.add_parser('status', help='Show plugin installation status')
+    plugins_status.add_argument('plugin', help='Plugin name')
+
+    # Shorthand flags for plugins command
+    plugins_parser.add_argument('--list', '-l', action='store_true',
+                               help='List all available plugins (shorthand for: plugins list)')
+    plugins_parser.add_argument('--install', '-i', nargs='*', dest='install_plugins',
+                               help='Install plugins (shorthand for: plugins install)')
+    plugins_parser.add_argument('--global', '-g', dest='global_install', action='store_true',
+                               help='Install globally (use with --install)')
 
     # Register plugin commands
     plugin_handlers = plugins.register_tool_commands(subparsers)
@@ -215,18 +238,47 @@ Examples:
             current = update_module.get_current_version()
             print(f"Raptor version: {current}")
             return 0
-    elif args.command == 'install':
+    elif args.command == 'plugins':
+        global_install = getattr(args, 'global_install', False)
+
+        # Handle shorthand flags
         if args.list:
             plugins.list_tools()
             return 0
-        elif args.status:
-            plugins.show_status(args.status)
+        elif hasattr(args, 'install_plugins') and args.install_plugins is not None:
+            # --install/-i flag used
+            if len(args.install_plugins) == 0:
+                # No plugins specified, install all
+                return 0 if plugins.install_all_tools(global_install) else 1
+            else:
+                # Install specific plugins
+                success = True
+                for plugin_name in args.install_plugins:
+                    if not plugins.install_tool(plugin_name, global_install):
+                        success = False
+                return 0 if success else 1
+
+        # Handle subcommands
+        if not args.plugins_command:
+            plugins_parser.print_help()
+            return 1
+
+        if args.plugins_command == 'list':
+            plugins.list_tools()
             return 0
-        elif args.tool:
-            global_install = getattr(args, 'global_install', False)
-            return 0 if plugins.install_tool(args.tool, global_install) else 1
-        else:
-            install_parser.print_help()
+        elif args.plugins_command == 'install':
+            if not args.plugins or len(args.plugins) == 0:
+                # No plugins specified, install all from raptor.toml
+                return 0 if plugins.install_all_tools(global_install) else 1
+            else:
+                # Install specific plugins
+                success = True
+                for plugin_name in args.plugins:
+                    if not plugins.install_tool(plugin_name, global_install):
+                        success = False
+                return 0 if success else 1
+        elif args.plugins_command == 'status':
+            plugins.show_status(args.plugin)
             return 0
     elif args.command in plugin_handlers:
         # Handle plugin commands
