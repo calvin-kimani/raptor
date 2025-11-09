@@ -81,6 +81,138 @@ additional_dirs = [
 ]
 ```
 
+## Managing Plugins
+
+Raptor supports a plugin system for extending functionality. Plugins can be installed globally or per-project.
+
+### Plugin Registry
+
+Add plugins to your `raptor.toml`:
+
+```toml
+[plugins.plugin-name]
+url = "https://raw.githubusercontent.com/user/repo/main/plugin/install.py"
+version = ">=1.0.0"  # Optional version constraint
+description = "Plugin description"
+```
+
+**Supported URL formats:**
+- Remote: `https://raw.githubusercontent.com/...`
+- Absolute local: `/absolute/path/to/plugin`
+- Relative local: `../relative/path/to/plugin`
+- File URL: `file:///path/to/plugin`
+
+**Version constraints (optional):**
+- `"1.0.0"` or `"@1.0.0"` - Exact version
+- `">=1.0.0"` - Minimum version
+- `">1.0.0"` - Greater than version
+- `"<=2.0.0"` - Maximum version
+- `"<2.0.0"` - Less than version
+
+### Framework-Level Plugins (Global)
+
+Edit `~/.raptor/raptor.toml`:
+
+```toml
+[plugins.solidity-parser]
+url = "https://raw.githubusercontent.com/user/solidity-parser/main/install.py"
+version = ">=1.0.0"
+description = "Solidity parser plugin"
+
+[plugins.graph-builder]
+url = "/usr/local/raptor-plugins/graph-builder"
+description = "Graph builder for contract analysis"
+```
+
+Install globally:
+```bash
+raptor plugins install solidity-parser --global
+```
+
+### Project-Level Plugins
+
+Edit your project's `raptor.toml`:
+
+```toml
+[plugins.custom-analyzer]
+url = "./plugins/custom-analyzer"
+version = "1.0.0"
+description = "Project-specific analyzer"
+```
+
+Install to project:
+```bash
+raptor plugins install custom-analyzer
+```
+
+### Multi-Version Support
+
+Raptor allows multiple versions of the same plugin:
+
+```bash
+# Install version 1.0.0 (becomes active)
+raptor plugins install solidity-parser
+
+# Install version 1.1.0 (1.0.0 remains active)
+raptor plugins install solidity-parser
+
+# Switch active version
+raptor plugins switch solidity-parser 1.1.0
+```
+
+Plugin directories:
+- Project: `<project>/.plugins/plugin-name/version/`
+- Global: `~/.raptor/bin/cli/plugins/plugin-name/version/`
+
+### Plugin Lock File
+
+The `.plugins.lock` file tracks installed plugins:
+
+```json
+{
+  "version": "1",
+  "plugins": {
+    "solidity-parser": {
+      "1.0.0": {
+        "source": "explicit",
+        "location": "project",
+        "installed_by": null,
+        "dependencies": [],
+        "active": false
+      },
+      "1.1.0": {
+        "source": "explicit",
+        "location": "project",
+        "installed_by": null,
+        "dependencies": ["graph-builder>=1.0.0"],
+        "active": true
+      }
+    }
+  }
+}
+```
+
+**Lock file fields:**
+- `source`: "explicit" (user-installed) or "dependency" (auto-installed)
+- `location`: "project" or "global"
+- `installed_by`: Parent plugin if installed as dependency
+- `dependencies`: List of required plugins with version constraints
+- `active`: Whether this version is currently active
+
+### Plugin Dependencies
+
+Plugins can declare dependencies in their `install.py`:
+
+```python
+TOOL_INFO = {
+    "name": "boundary-analyzer",
+    "version": "1.0.0",
+    "depends_on": ["solidity-parser>=1.0.0", "graph-builder>=1.0.0"],
+}
+```
+
+Dependencies are automatically installed when you install the plugin.
+
 ## Path Resolution
 
 Raptor resolves paths as follows:

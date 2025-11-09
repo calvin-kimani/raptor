@@ -172,10 +172,17 @@ Examples:
     plugins_install.add_argument('plugins', nargs='*', help='Plugin name(s) to install (default: install all from raptor.toml)')
     plugins_install.add_argument('--global', '-g', dest='global_install', action='store_true',
                                 help='Install globally to raptor installation instead of project plugins')
+    plugins_install.add_argument('--force', '-f', action='store_true',
+                                help='Force reinstall even if already installed')
 
     # Plugins status
     plugins_status = plugins_subparsers.add_parser('status', help='Show plugin installation status')
     plugins_status.add_argument('plugin', help='Plugin name')
+
+    # Plugins switch - switch active version
+    plugins_switch = plugins_subparsers.add_parser('switch', help='Switch active plugin version')
+    plugins_switch.add_argument('plugin', help='Plugin name')
+    plugins_switch.add_argument('version', help='Version to activate')
 
     # Shorthand flags for plugins command
     plugins_parser.add_argument('--list', '-l', action='store_true',
@@ -184,6 +191,8 @@ Examples:
                                help='Install plugins (shorthand for: plugins install)')
     plugins_parser.add_argument('--global', '-g', dest='global_install', action='store_true',
                                help='Install globally (use with --install)')
+    plugins_parser.add_argument('--force', '-f', action='store_true',
+                               help='Force reinstall (use with --install)')
 
     # Register plugin commands
     plugin_handlers = plugins.register_tool_commands(subparsers)
@@ -240,6 +249,7 @@ Examples:
             return 0
     elif args.command == 'plugins':
         global_install = getattr(args, 'global_install', False)
+        force = getattr(args, 'force', False)
 
         # Handle shorthand flags
         if args.list:
@@ -249,12 +259,12 @@ Examples:
             # --install/-i flag used
             if len(args.install_plugins) == 0:
                 # No plugins specified, install all
-                return 0 if plugins.install_all_tools(global_install) else 1
+                return 0 if plugins.install_all_tools(global_install, force=force) else 1
             else:
                 # Install specific plugins
                 success = True
                 for plugin_name in args.install_plugins:
-                    if not plugins.install_tool(plugin_name, global_install):
+                    if not plugins.install_tool(plugin_name, global_install, force=force):
                         success = False
                 return 0 if success else 1
 
@@ -269,17 +279,19 @@ Examples:
         elif args.plugins_command == 'install':
             if not args.plugins or len(args.plugins) == 0:
                 # No plugins specified, install all from raptor.toml
-                return 0 if plugins.install_all_tools(global_install) else 1
+                return 0 if plugins.install_all_tools(global_install, force=force) else 1
             else:
                 # Install specific plugins
                 success = True
                 for plugin_name in args.plugins:
-                    if not plugins.install_tool(plugin_name, global_install):
+                    if not plugins.install_tool(plugin_name, global_install, force=force):
                         success = False
                 return 0 if success else 1
         elif args.plugins_command == 'status':
             plugins.show_status(args.plugin)
             return 0
+        elif args.plugins_command == 'switch':
+            return 0 if plugins.switch_version(args.plugin, args.version) else 1
     elif args.command in plugin_handlers:
         # Handle plugin commands
         handler = plugin_handlers[args.command]

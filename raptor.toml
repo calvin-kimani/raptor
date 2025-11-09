@@ -41,8 +41,23 @@ report_formats = ["sherlock", "code4rena", "codehawks"]
 
 # Plugin Registry
 # Add plugins by defining them in this section
-# The URL should point directly to the install.py file (e.g., raw GitHub URL)
+# The URL should point to the plugin directory or install.py file
+#
+# Version constraints (optional):
+#   - "1.0.0" or "@1.0.0"  - Exact version
+#   - ">=1.0.0"            - Minimum version
+#   - ">1.0.0"             - Greater than version
+#   - "<=2.0.0"            - Maximum version
+#   - "<2.0.0"             - Less than version
+#
 # Example format:
 # [plugins.plugin_name]
-# url = "https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/path/to/install.py"
+# url = "https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/path/to/plugin"
+# version = ">=1.0.0"
 # description = "Plugin description"
+#
+# Or for local plugins:
+# [plugins.local_plugin]
+# url = "/absolute/path/to/plugin"
+# version = "@1.0.0"
+# description = "Local plugin"

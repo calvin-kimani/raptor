@@ -89,6 +89,7 @@ raptor --version
 - **JSON-based Findings**: Store findings as structured JSON following a defined schema
 - **Multi-platform Reports**: Generate reports for Sherlock, Code4rena, and CodeHawks
 - **Git Integration**: Clone target repositories directly during project initialization
+- **Plugin System**: Extensible plugin architecture with dependency management and multi-version support
 - **Flexible Workflow**: Create findings and generate reports independently or together
 
 ## File Structure
@@ -103,9 +104,12 @@ raptor/
 │       ├── finding.py    # Finding management
 │       ├── git.py        # Git repository management
 │       ├── init.py       # Project initialization
-│       ├── report.py     # Report generation
+│       ├── plugin_lock.py      # Plugin lock file management
+│       ├── plugin_manager.py   # Plugin discovery and installation
 │       ├── raptor.py     # Main CLI logic
-│       └── update.py     # Version management
+│       ├── report.py     # Report generation
+│       ├── update.py     # Version management
+│       └── version_utils.py    # Version parsing and comparison
 ├── scripts/              # Custom user scripts directory
 ├── schemas/              # Report templates and finding schemas
 │   ├── reports/
@@ -197,6 +201,92 @@ raptor report --format sherlock --finding HIGH-reentrancy-attack
 - **Git integration**: Clone repositories with `--git-url` or manage them with `raptor git` commands
 - **Shallow clones**: By default, repos are cloned with `--depth 1` for faster downloads
 - **Flexible reporting**: Generate reports for all findings or specific ones
+
+### Plugin System
+
+Raptor supports an extensible plugin architecture with automatic dependency management and multi-version support.
+
+#### Managing Plugins
+
+```bash
+# List all available plugins
+raptor plugins list
+raptor plugins -l
+
+# Install plugin to project (.plugins/)
+raptor plugins install solidity-parser
+
+# Install plugin globally (~/.raptor/bin/cli/plugins/)
+raptor plugins install solidity-parser --global
+raptor plugins -i solidity-parser -g
+
+# Install multiple plugins
+raptor plugins install parser-plugin graph-plugin
+
+# Force reinstall
+raptor plugins install solidity-parser --force
+raptor plugins -i solidity-parser -f
+
+# Check plugin status
+raptor plugins status solidity-parser
+```
+
+#### Multi-Version Support
+
+Raptor allows multiple versions of the same plugin to be installed side-by-side:
+
+```bash
+# First installation (becomes active version)
+raptor plugins install solidity-parser
+# Installs to: .plugins/solidity-parser/1.0.0/
+
+# Install different version (previous remains active)
+raptor plugins install solidity-parser
+# Installs to: .plugins/solidity-parser/1.1.0/
+
+# List shows all versions
+raptor plugins list
+# Output:
+#   solidity-parser   [Project]    v1.0.0 (2 versions)
+#                                   Versions: v1.0.0*, v1.1.0
+
+# Switch active version
+raptor plugins switch solidity-parser 1.1.0
+# Output: ✓ Switched 'solidity-parser' from v1.0.0 to v1.1.0
+```
+
+#### Plugin Lock File
+
+Installed plugins are tracked in `.plugins.lock` which records:
+- All installed versions per plugin
+- Active version for each plugin
+- Installation source (explicit vs dependency)
+- Installation location (project vs global)
+- Dependency relationships
+
+#### Creating Custom Plugins
+
+Add plugins to `raptor.toml`:
+
+```toml
+[plugins.my-plugin]
+url = "https://raw.githubusercontent.com/user/repo/main/plugin/install.py"
+version = ">=1.0.0"  # Optional version constraint
+description = "My custom plugin"
+
+# Or use local path
+[plugins.local-plugin]
+url = "/path/to/plugin"
+# or relative path
+url = "../my-plugins/analyzer"
+```
+
+**Version Constraints:**
+- `"1.0.0"` or `"@1.0.0"` - Exact version
+- `">=1.0.0"` - Minimum version
+- `">1.0.0"` - Greater than version
+- `"<=2.0.0"` - Maximum version
+- `"<2.0.0"` - Less than version
 
 ## Example Workflow
 
