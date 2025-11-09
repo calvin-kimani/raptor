@@ -77,7 +77,7 @@ def init_project(project_name=None, force=False, git_urls=None, shallow=True):
         config = f"""# Raptor Framework Configuration
 
 [raptor]
-version = "0.1.0"
+version = "0.2.0"
 installation_path = "{raptor_root}"
 
 [defaults]

@@ -2,7 +2,7 @@
 # This is the default configuration for the Raptor installation
 
 [raptor]
-version = "0.1.0"
+version = "0.2.0"
 installation_path = "/home/user/.raptor"  # Will be set during installation
 
 [schemas]
