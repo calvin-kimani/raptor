@@ -51,57 +51,40 @@ def init_project(project_name=None, force=False, git_urls=None, shallow=True):
         "audits/findings/.templates",       # Finding templates (hidden)
         "audits/reports",                   # Final reports
         "audits/reports/.templates",        # Report templates (hidden)
-        "test",                             # PoC exploits and tests
-        "notes",                            # Audit notes
     ]
 
     for dir_name in dirs:
         (project_path / dir_name).mkdir(parents=True, exist_ok=True)
 
-    # Create raptor.toml config
+    # Copy raptor.toml from main installation and update installation_path
     raptor_root = get_raptor_root()
-    config = """[project]
-name = "{project_name}"
-version = "0.1.0"
+    main_config_path = raptor_root / "raptor.toml"
+
+    if main_config_path.exists():
+        # Read the main installation's raptor.toml
+        with open(main_config_path, 'r') as f:
+            config = f.read()
+
+        # Update only the installation_path
+        import re
+        config = re.sub(
+            r'installation_path\s*=\s*"[^"]*"',
+            f'installation_path = "{raptor_root}"',
+            config
+        )
+    else:
+        # Fallback if main config doesn't exist
+        config = f"""# Raptor Framework Configuration
 
 [raptor]
-# Location of Raptor framework installation
-installation_path = "{raptor_path}"
+version = "0.1.0"
+installation_path = "{raptor_root}"
 
-[audit]
-target = "src/"
-
-[output]
-findings_dir = "audits/findings"
-reports_dir = "audits/reports"
-
-[templates]
-# Template locations (hidden from main directory)
-findings_templates = "audits/findings/.templates"
-reports_templates = "audits/reports/.templates"
-schema = "audits/findings/.templates/finding-schema.json"
-
-# Project-specific custom template directories
-# Add additional directories here for project-specific templates
-additional_dirs = [
-    # "./custom-templates",
-    # "/path/to/project/templates"
-]
-
-[scripts]
-# Project-specific custom script directories
-# Add additional directories here for project-specific scripts
-additional_dirs = [
-    # "./scripts",
-    # "/path/to/project/scripts"
-]
-
-[test]
-framework = "foundry"  # foundry, hardhat, or custom
-""".format(
-        project_name=project_name or project_path.name,
-        raptor_path=str(raptor_root)
-    )
+[defaults]
+test_framework = "foundry"
+severity_levels = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+report_formats = ["sherlock", "code4rena", "codehawks"]
+"""
 
     with open(project_path / "raptor.toml", "w") as f:
         f.write(config)
