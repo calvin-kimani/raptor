@@ -278,7 +278,8 @@ def install_tool(
     global_install: bool = False,
     force: bool = False,
     installed_by: Optional[str] = None,
-    _lock: Optional[PluginLock] = None
+    _lock: Optional[PluginLock] = None,
+    _url: Optional[str] = None
 ) -> bool:
     """
     Install a specific tool with dependency resolution.
@@ -292,6 +293,7 @@ def install_tool(
         force: If True, reinstall even if already installed
         installed_by: Parent plugin name if this is a dependency
         _lock: PluginLock instance (for internal use)
+        _url: Optional URL to override registry lookup (for dependencies with URLs)
 
     Returns:
         True if installation succeeded
@@ -304,24 +306,31 @@ def install_tool(
     if _lock is None:
         _lock = PluginLock()
 
-    # Check if plugin exists in raptor.toml
-    registry = load_plugins_registry()
+    # Get plugin URL - either from parameter or registry
+    if _url:
+        # URL provided directly (from dependency spec)
+        plugin_url = _url
+        required_operator = None
+        required_version = None
+    else:
+        # Check if plugin exists in raptor.toml
+        registry = load_plugins_registry()
 
-    if tool_name not in registry:
-        print(f"Error: Unknown tool '{tool_name}'")
-        print(f"\nAvailable tools in raptor.toml: {', '.join(registry.keys())}")
-        return False
+        if tool_name not in registry:
+            print(f"Error: Unknown tool '{tool_name}'")
+            print(f"\nAvailable tools in raptor.toml: {', '.join(registry.keys())}")
+            return False
 
-    # Get plugin info from registry
-    plugin_info = registry[tool_name]
-    plugin_url = plugin_info['url']
-    required_version_spec = plugin_info.get('version')  # Optional version constraint
+        # Get plugin info from registry
+        plugin_info = registry[tool_name]
+        plugin_url = plugin_info['url']
+        required_version_spec = plugin_info.get('version')  # Optional version constraint
 
-    # Parse version constraint if specified
-    required_operator = None
-    required_version = None
-    if required_version_spec:
-        _, required_operator, required_version = parse_dependency_spec(f"{tool_name}{required_version_spec}")
+        # Parse version constraint if specified
+        required_operator = None
+        required_version = None
+        if required_version_spec:
+            _, required_operator, required_version, _ = parse_dependency_spec(f"{tool_name}{required_version_spec}")
 
     # Step 1: Download/copy plugin to temporary directory to get version from TOOL_INFO
     temp_dir = Path(tempfile.mkdtemp(prefix=f"raptor_plugin_{tool_name}_"))
@@ -438,8 +447,8 @@ def install_tool(
             print(f"  Installing dependencies...")
 
         for dep_spec in dependencies:
-            # Parse dependency specification
-            dep_name, operator, dep_required_version = parse_dependency_spec(dep_spec)
+            # Parse dependency specification (now returns 4-tuple with URL)
+            dep_name, operator, dep_required_version, dep_url = parse_dependency_spec(dep_spec)
 
             # Check if dependency is already installed with compatible version
             if _lock.is_installed(dep_name) and not force:
@@ -470,10 +479,11 @@ def install_tool(
                 global_install=global_install,
                 force=True if (operator and dep_required_version and _lock.is_installed(dep_name)) else force,
                 installed_by=tool_name,
-                _lock=_lock
+                _lock=_lock,
+                _url=dep_url  # Pass URL if provided in dependency spec
             )
             if not dep_success:
-                print(f"  ✗ Failed to install dependency '{format_dependency_spec(dep_name, operator, dep_required_version)}'")
+                print(f"  ✗ Failed to install dependency '{format_dependency_spec(dep_name, operator, dep_required_version, dep_url)}'")
                 # Clean up failed installation
                 if install_dir.exists():
                     shutil.rmtree(install_dir)

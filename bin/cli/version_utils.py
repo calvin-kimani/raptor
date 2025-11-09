@@ -54,32 +54,38 @@ class Version:
         return self == other or self > other
 
 
-def parse_dependency_spec(dep_spec: str) -> Tuple[str, Optional[str], Optional[str]]:
+def parse_dependency_spec(dep_spec: str) -> Tuple[str, Optional[str], Optional[str], Optional[str]]:
     """
     Parse a dependency specification string.
 
     Supports formats:
-    - "plugin-name" -> (plugin-name, None, None)
-    - "plugin-name>=1.0.0" -> (plugin-name, ">=", "1.0.0")
-    - "plugin-name@1.0.0" -> (plugin-name, "==", "1.0.0")
-    - "plugin-name==1.0.0" -> (plugin-name, "==", "1.0.0")
-    - "plugin-name>1.0.0" -> (plugin-name, ">", "1.0.0")
-    - "plugin-name<2.0.0" -> (plugin-name, "<", "2.0.0")
-    - "plugin-name<=2.0.0" -> (plugin-name, "<=", "2.0.0")
+    - "plugin-name" -> (plugin-name, None, None, None)
+    - "plugin-name>=1.0.0" -> (plugin-name, ">=", "1.0.0", None)
+    - "plugin-name@1.0.0" -> (plugin-name, "==", "1.0.0", None)
+    - "plugin-name::url" -> (plugin-name, None, None, url)
+    - "plugin-name>=1.0.0::url" -> (plugin-name, ">=", "1.0.0", url)
+
+    The :: separator is used to specify a custom URL for the dependency.
 
     Args:
         dep_spec: Dependency specification string
 
     Returns:
-        Tuple of (plugin_name, operator, version)
+        Tuple of (plugin_name, operator, version, url)
     """
+    # Check if URL is specified with ::
+    url = None
+    if '::' in dep_spec:
+        dep_spec, url = dep_spec.split('::', 1)
+        url = url.strip()
+
     # Pattern to match: name [operator] [version]
     pattern = r'^([a-zA-Z0-9_-]+)\s*(@|>=|>|<=|<|==)?\s*([0-9.]+)?$'
     match = re.match(pattern, dep_spec.strip())
 
     if not match:
         # No version specified
-        return (dep_spec.strip(), None, None)
+        return (dep_spec.strip(), None, None, url)
 
     name, operator, version = match.groups()
 
@@ -87,7 +93,7 @@ def parse_dependency_spec(dep_spec: str) -> Tuple[str, Optional[str], Optional[s
     if operator == '@':
         operator = '=='
 
-    return (name, operator, version)
+    return (name, operator, version, url)
 
 
 def check_version_constraint(installed_version: str, operator: str, required_version: str) -> bool:
@@ -124,7 +130,7 @@ def check_version_constraint(installed_version: str, operator: str, required_ver
         return True
 
 
-def format_dependency_spec(name: str, operator: Optional[str], version: Optional[str]) -> str:
+def format_dependency_spec(name: str, operator: Optional[str], version: Optional[str], url: Optional[str] = None) -> str:
     """
     Format a dependency specification for display.
 
@@ -132,10 +138,14 @@ def format_dependency_spec(name: str, operator: Optional[str], version: Optional
         name: Plugin name
         operator: Version operator
         version: Version string
+        url: Optional URL
 
     Returns:
         Formatted dependency string
     """
+    result = name
     if operator and version:
-        return f"{name}{operator}{version}"
-    return name
+        result += f"{operator}{version}"
+    if url:
+        result += f"::{url}"
+    return result
