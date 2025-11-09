@@ -184,6 +184,19 @@ Examples:
     plugins_switch.add_argument('plugin', help='Plugin name')
     plugins_switch.add_argument('version', help='Version to activate')
 
+    # Plugins uninstall
+    plugins_uninstall = plugins_subparsers.add_parser('uninstall', help='Uninstall plugin')
+    plugins_uninstall.add_argument('plugin', help='Plugin name')
+    plugins_uninstall.add_argument('--version', help='Specific version to uninstall (default: all versions)')
+    plugins_uninstall.add_argument('--force', '-f', action='store_true',
+                                  help='Force removal even if other plugins depend on it')
+
+    # Plugins update
+    plugins_update = plugins_subparsers.add_parser('update', help='Update plugin to latest version')
+    plugins_update.add_argument('plugin', help='Plugin name')
+    plugins_update.add_argument('--global', '-g', dest='global_install', action='store_true',
+                               help='Update global plugin')
+
     # Shorthand flags for plugins command
     plugins_parser.add_argument('--list', '-l', action='store_true',
                                help='List all available plugins (shorthand for: plugins list)')
@@ -292,6 +305,13 @@ Examples:
             return 0
         elif args.plugins_command == 'switch':
             return 0 if plugins.switch_version(args.plugin, args.version) else 1
+        elif args.plugins_command == 'uninstall':
+            version = getattr(args, 'version', None)
+            force = getattr(args, 'force', False)
+            return 0 if plugins.uninstall_tool(args.plugin, version, force) else 1
+        elif args.plugins_command == 'update':
+            global_install = getattr(args, 'global_install', False)
+            return 0 if plugins.update_tool(args.plugin, global_install) else 1
     elif args.command in plugin_handlers:
         # Handle plugin commands
         handler = plugin_handlers[args.command]

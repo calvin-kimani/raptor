@@ -451,55 +451,88 @@ def install_tool(
             # Parse dependency specification (now returns 4-tuple with URL)
             dep_name, operator, dep_required_version, dep_url = parse_dependency_spec(dep_spec)
 
-            # Check if dependency is already installed with compatible version
-            if _lock.is_installed(dep_name) and not force:
-                dep_info = _lock.get_plugin(dep_name)
-                dep_installed_version = dep_info.get('version', '0.0.0')
+            # Determine which specific version to use for this dependency
+            dep_version_to_use = None
 
-                # Check version constraint
-                if operator and dep_required_version:
-                    if check_version_constraint(dep_installed_version, operator, dep_required_version):
-                        if not installed_by:  # Only print for explicit installs
-                            print(f"  ✓ Dependency '{dep_name}' already installed (v{dep_installed_version})")
-                        continue
-                    else:
-                        if not installed_by:
-                            print(f"  ⚠ Dependency '{dep_name}' version mismatch:")
-                            print(f"    Installed: v{dep_installed_version}")
-                            print(f"    Required: {operator}{dep_required_version}")
-                            print(f"    Reinstalling...")
-                else:
-                    # No version constraint, already installed is fine
+            # Check if this exact version is already installed
+            if dep_required_version and operator == '==':
+                # Exact version requested
+                if _lock.is_installed(dep_name, dep_required_version):
+                    dep_version_to_use = dep_required_version
                     if not installed_by:
-                        print(f"  ✓ Dependency '{dep_name}' already installed")
-                    continue
+                        print(f"  ✓ Dependency '{dep_name}' v{dep_required_version} already installed")
+                else:
+                    # Need to install this exact version
+                    dep_version_to_use = dep_required_version
+            elif operator and dep_required_version:
+                # Version constraint (>=, >, <=, <) - find best matching installed version
+                installed_versions = _lock.get_installed_versions(dep_name)
+                matching_version = None
 
-            # Install or reinstall the dependency
-            dep_success = install_tool(
-                dep_name,
-                global_install=global_install,
-                force=True if (operator and dep_required_version and _lock.is_installed(dep_name)) else force,
-                installed_by=tool_name,
-                _lock=_lock,
-                _url=dep_url  # Pass URL if provided in dependency spec
-            )
-            if not dep_success:
-                print(f"  ✗ Failed to install dependency '{format_dependency_spec(dep_name, operator, dep_required_version, dep_url)}'")
-                # Clean up failed installation
-                if install_dir.exists():
-                    shutil.rmtree(install_dir)
-                shutil.rmtree(temp_dir)
-                return False
-            elif not installed_by:  # Only print for explicit installs
-                version_suffix = f" (v{dep_required_version})" if dep_required_version else ""
-                print(f"  ✓ Installed dependency '{dep_name}'{version_suffix}")
+                for ver in installed_versions:
+                    if check_version_constraint(ver, operator, dep_required_version):
+                        matching_version = ver
+                        break  # Use first matching version
+
+                if matching_version:
+                    dep_version_to_use = matching_version
+                    if not installed_by:
+                        print(f"  ✓ Dependency '{dep_name}' v{matching_version} satisfies {operator}{dep_required_version}")
+                # If no matching version, we'll install (version determined after download)
+            else:
+                # No version constraint - use any installed version
+                if _lock.is_installed(dep_name):
+                    dep_version_to_use = _lock.get_active_version(dep_name)
+                    if not installed_by:
+                        print(f"  ✓ Dependency '{dep_name}' v{dep_version_to_use} already installed")
+
+            # Install if we haven't found a suitable version
+            if not dep_version_to_use:
+                dep_success = install_tool(
+                    dep_name,
+                    global_install=global_install,
+                    force=False,
+                    installed_by=tool_name,
+                    _lock=_lock,
+                    _url=dep_url  # Pass URL if provided in dependency spec
+                )
+                if not dep_success:
+                    print(f"  ✗ Failed to install dependency '{format_dependency_spec(dep_name, operator, dep_required_version, dep_url)}'")
+                    # Clean up failed installation
+                    if install_dir.exists():
+                        shutil.rmtree(install_dir)
+                    shutil.rmtree(temp_dir)
+                    return False
+
+                # Get the version that was just installed
+                dep_version_to_use = _lock.get_active_version(dep_name)
+
+                if not installed_by:
+                    print(f"  ✓ Installed dependency '{dep_name}' v{dep_version_to_use}")
 
         # Step 6.5: Create dependency paths config file for this plugin
+        # Track the SPECIFIC version of each dependency this plugin uses
         dep_paths = {}
         for dep_spec in dependencies:
-            dep_name, _, _, _ = parse_dependency_spec(dep_spec)
-            # Get the installed dependency version and path
-            dep_version = _lock.get_active_version(dep_name)
+            dep_name, operator, dep_required_version, _ = parse_dependency_spec(dep_spec)
+
+            # Determine which version to use (same logic as above)
+            if dep_required_version and operator == '==':
+                dep_version = dep_required_version
+            elif operator and dep_required_version:
+                # Find best matching installed version
+                installed_versions = _lock.get_installed_versions(dep_name)
+                dep_version = None
+                for ver in installed_versions:
+                    if check_version_constraint(ver, operator, dep_required_version):
+                        dep_version = ver
+                        break
+                if not dep_version:
+                    dep_version = _lock.get_active_version(dep_name)
+            else:
+                # No constraint, use active version
+                dep_version = _lock.get_active_version(dep_name)
+
             if dep_version:
                 dep_plugin_info = _lock.get_plugin(dep_name, dep_version)
                 if dep_plugin_info:
@@ -696,6 +729,104 @@ def switch_version(tool_name: str, version: str) -> bool:
     print(f"✓ Switched '{tool_name}' from v{current_active} to v{version}")
     print(f"  Note: Restart any running processes to use the new version")
     return True
+
+
+def uninstall_tool(tool_name: str, version: Optional[str] = None, force: bool = False) -> bool:
+    """
+    Uninstall a plugin.
+
+    Args:
+        tool_name: Name of the plugin to uninstall
+        version: Specific version to uninstall (optional, removes all if not specified)
+        force: Force removal even if other plugins depend on it
+
+    Returns:
+        True if uninstallation succeeded
+    """
+    import shutil
+
+    lock = PluginLock()
+
+    # Check if plugin is installed
+    if not lock.is_installed(tool_name):
+        print(f"Error: Plugin '{tool_name}' is not installed")
+        return False
+
+    # Check for dependents
+    dependents = lock.get_dependents(tool_name)
+    if dependents and not force:
+        print(f"Error: Cannot uninstall '{tool_name}' - other plugins depend on it:")
+        for dependent in dependents:
+            print(f"  - {dependent}")
+        print(f"\nUse --force to uninstall anyway (may break dependent plugins)")
+        return False
+
+    # Get versions to remove
+    if version:
+        versions_to_remove = [version] if lock.is_installed(tool_name, version) else []
+        if not versions_to_remove:
+            print(f"Error: Version '{version}' of '{tool_name}' is not installed")
+            return False
+    else:
+        versions_to_remove = lock.get_installed_versions(tool_name)
+
+    # Remove each version
+    for ver in versions_to_remove:
+        plugin_info = lock.get_plugin(tool_name, ver)
+        if not plugin_info:
+            continue
+
+        location = plugin_info.get('location', 'project')
+
+        if location == 'global':
+            plugin_dir = Path(__file__).parent / "plugins" / tool_name / ver
+        else:
+            plugin_dir = Path.cwd() / ".plugins" / tool_name / ver
+
+        # Remove directory
+        if plugin_dir.exists():
+            shutil.rmtree(plugin_dir)
+            print(f"✓ Removed '{tool_name}' v{ver} from {location}")
+
+        # Remove from lock file
+        lock.remove_plugin(tool_name, ver)
+
+    # Clean up empty parent directory
+    if not version:  # Removed all versions
+        if location == 'global':
+            parent_dir = Path(__file__).parent / "plugins" / tool_name
+        else:
+            parent_dir = Path.cwd() / ".plugins" / tool_name
+
+        if parent_dir.exists() and not any(parent_dir.iterdir()):
+            parent_dir.rmdir()
+
+    print(f"✓ Successfully uninstalled '{tool_name}'")
+    return True
+
+
+def update_tool(tool_name: str, global_install: bool = False) -> bool:
+    """
+    Update a plugin to the latest version available.
+
+    Args:
+        tool_name: Name of the plugin to update
+        global_install: If True, update global plugin; if False, update project plugin
+
+    Returns:
+        True if update succeeded
+    """
+    lock = PluginLock()
+
+    # Check if plugin is currently installed
+    if not lock.is_installed(tool_name):
+        print(f"Error: Plugin '{tool_name}' is not installed")
+        print(f"Use 'raptor plugins install {tool_name}' to install it")
+        return False
+
+    # Install latest version (force=True to allow reinstall)
+    print(f"Updating '{tool_name}' to latest version...")
+    return install_tool(tool_name, global_install, force=True)
 
 
 def show_status(tool_name: str) -> None:
